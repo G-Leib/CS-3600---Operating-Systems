@@ -49,11 +49,14 @@ int main() {
 void handler(int signal) {
     int CHLDSIG = 17;
     if(signal == CHLDSIG) {
-        pid_t exit_status;
-        assert(waitpid(-1, &exit_status, 0) >= 0);
-        WRITESTRING("Child's status: ");
-        WRITEINT(exit_status, sizeof(exit_status));
-        WRITESTRING("\n");
+        int wstatus;
+        assert(waitpid(-1, &wstatus, 0) >= 0);
+        if WIFSIGNALED(wstatus) {
+            int exit_status = WTERMSIG(wstatus);
+            WRITESTRING("Child's status: ");
+            WRITEINT(exit_status, 4);
+            WRITESTRING("\n");
+        }
         exit(0);
     }
 }

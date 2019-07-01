@@ -16,3 +16,5 @@
 
 #define WRITEINT(INT, LEN) { char buf[LEN]; \
     syscall(eye2eh(INT, buf, LEN, 10)); WRITESTRING(buf); }
+
+    
