@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <unistd.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -36,7 +37,7 @@ Terminated: 15
 
 ---------------------------------------------------------------------------
 Add the following functionality.
-1) Change the NUM_SECONDS to 20.
+1) Change the NUM_SECONDS to 20. -- DONE
 
 2) Take any number of arguments for executables and place each on the
    processes list with a state of NEW. The executables will not require
