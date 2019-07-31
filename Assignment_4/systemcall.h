@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <string.h>
 
-#define systemcall(x) { \
+#define systemcall(x); { \
     errno = 0; \
     (x); \
     int err = errno; \
