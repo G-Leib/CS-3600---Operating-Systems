@@ -173,7 +173,6 @@ void scheduler (int signum) {
     } else {
         loop = SEARCH_EXIT;
     }
-    running->interrupts++;
     
     do {
         proc_counter++;
@@ -206,7 +205,9 @@ void scheduler (int signum) {
             }
         } else if (loop == SEARCH_READY) {
             if(processes[current_proc].state == READY) {
-                proc_switch(current_proc);
+                if(running->pid == processes[current_proc].pid){
+                    proc_switch(current_proc);
+                }
                 systemcall(kill(running->pid, SIGCONT));
                 break;
             }
@@ -222,11 +223,10 @@ void scheduler (int signum) {
 
         if (loop == SEARCH_EXIT) {
             running = &idle;
-            WRITESTRING("set to idle")
+            WRITESTRING("set to idle");
         }
 
     } while(loop != SEARCH_EXIT);
-    WRITESTRING("exited loop")
 
     if (strcmp(running->name, "IDLE")==0) {
         WRITESTRING ("Continuing idle: ");
@@ -254,11 +254,12 @@ void process_done (int signum) {
         WRITEINT(time(NULL) - running->started, 4);
         WRITESTRING(" seconds\n");
         running->state = TERMINATED;
-        running = &idle;
+        //running = &idle;
+        //systemcall(kill(running->pid, SIGCONT));
 }
 
     WRITESTRING ("Timer died, cleaning up and killing everything\n");
-    // systemcall(kill(0, SIGTERM));
+    systemcall(kill(running->pid, SIGTERM));
 
     WRITESTRING ("---- leaving process_done\n");
 }
