@@ -49,7 +49,7 @@ Add the following functionality.
       number of context switches and interrupts it had and changing its
       state from RUNNING to READY. -- DONE
    b) If there are any NEW processes on processes list, change its state to
-      RUNNING, and fork() and execl() it.
+      RUNNING, and fork() and execl() it. -- DONE
    c) If there are no NEW processes, round robin the processes in the
       processes queue that are READY. If no process is READY in the
       list, execute the idle process. -- DONE
@@ -65,7 +65,7 @@ Add the following functionality.
    c) Restart the idle process to use the rest of the time slice. -- DONE
 */
 
-#define NUM_SECONDS 10
+#define NUM_SECONDS 20
 #define ever ;;
 
 enum STATE { NEW, RUNNING, WAITING, READY, TERMINATED, EMPTY };
@@ -92,7 +92,7 @@ struct PCB idle;
 struct PCB *running;
 
 int num_processes = 0;
-int proc_counter = 0;
+int proc_counter = -1;
 
 int sys_time;
 int timer;
@@ -168,45 +168,50 @@ void scheduler (int signum) {
     int first_pid = running->pid;
     int current_proc;
     
-    loop = SEARCH_NEW;
-
+    if(num_processes > 0) {
+        loop = SEARCH_NEW;
+    } else {
+        loop = SEARCH_EXIT;
+    }
     running->interrupts++;
     
     do {
-        current_proc = proc_counter % num_processes;
+        proc_counter++;
+        if (proc_counter != 0) {
+            current_proc = proc_counter % num_processes;
+        } else {
+            current_proc = 0;
+        }
         if (loop == SEARCH_NEW) {
-            WRITESTRING("looking for new");
             if(processes[current_proc].state == NEW) {
-                WRITESTRING("found new -- running");
                 proc_switch(current_proc);
                 running->started = time(NULL);
-                int fork_status = fork();
-                
-                if (fork_status > 0) {
+                running->ppid = getpid();
+                running->interrupts = 0;
+                running->switches = 0;
+
+                running->pid = fork();
+
+                if (running->pid > 0) {
                     // Positive = Parent process
-                } else if (fork_status < 0) {
+                } else if (running->pid < 0) {
                     // Negative = Error
                     perror("fork error");
                     exit(-1);
                 } else {
                     // 0 = Child process
-                    running->pid = getpid();
-                    running->ppid = getppid();
                     assert(execl(running->name, running->name, (char *) NULL)!=0);
                 }
-
                 break;
             }
         } else if (loop == SEARCH_READY) {
-            WRITESTRING("looking for ready\n");
             if(processes[current_proc].state == READY) {
-                WRITESTRING("found ready -- running next");
                 proc_switch(current_proc);
+                systemcall(kill(running->pid, SIGCONT));
+                break;
             }
         }
         
-        proc_counter++;
-        current_proc = proc_counter % num_processes;
         if (processes[current_proc].pid == first_pid) {
             if (loop == SEARCH_NEW) {
                 loop = SEARCH_READY;
@@ -217,9 +222,11 @@ void scheduler (int signum) {
 
         if (loop == SEARCH_EXIT) {
             running = &idle;
+            WRITESTRING("set to idle")
         }
 
     } while(loop != SEARCH_EXIT);
+    WRITESTRING("exited loop")
 
     if (strcmp(running->name, "IDLE")==0) {
         WRITESTRING ("Continuing idle: ");
@@ -251,7 +258,7 @@ void process_done (int signum) {
 }
 
     WRITESTRING ("Timer died, cleaning up and killing everything\n");
-    systemcall(kill(0, SIGTERM));
+    // systemcall(kill(0, SIGTERM));
 
     WRITESTRING ("---- leaving process_done\n");
 }
@@ -291,17 +298,13 @@ int main(int argc, char **argv) {
     boot();
     create_idle();
     running = &idle;
+    
+    num_processes = argc - 1;
 
-    for(int i = 1; i < argc; i++){
-        num_processes++;
-        int proc_num = i - 1;
-        processes[proc_num].name = argv[i];
-        processes[proc_num].state = NEW;
-        processes[proc_num].pid = getpid();
+    for(int i = 0; i < argc; i++){
+        processes[i].name = argv[i+1];
+        processes[i].state = NEW;
     }
-
-
-
 
     for(ever) {
         pause();
